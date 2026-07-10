@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quiz Timer</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: #d0f0c0;
+      }
+      h1 {
+        background: green;
+        color: red;
+        text-align: center;
+        padding: 15px 0;
+        margin: 0;
+        font-size: 2em;
+      }
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .question {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .options label {
+        display: block;
+        margin: 5px 0;
+        cursor: pointer;
+      }
+      .feedback {
+        margin-top: 10px;
+        padding: 8px;
+        border-radius: 5px;
+        font-weight: bold;
+        display: none;
+      }
+      .feedback.correct {
+        background: #c8e6c9;
+        color: #256029;
+      }
+      .feedback.wrong {
+        background: #ffcdd2;
+        color: #c62828;
+      }
+      button {
+        margin-top: 15px;
+        padding: 8px 16px;
+        font-size: 1em;
+      }
+      #timer {
+        text-align: center;
+        font-size: 1.6em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #c62828;
+        background: #fff3e0;
+        padding: 10px;
+        border-radius: 10px;
+        border: 3px solid #ff9800;
+        display: none;
+      }
+      #timer.warning {
+        color: #d32f2f;
+        background: #ffebee;
+        border-color: #d32f2f;
+        animation: pulse 1s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.03);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      /* Responsive adjustments */
+      @media (max-width: 600px) {
+        .container {
+          margin: 5px;
+          padding: 10px;
+        }
+        h1 {
+          font-size: 1.5em;
+        }
+        #timer {
+          font-size: 1.3em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Quiz</h1>
+    <div class="container">
+      <!-- Hộp thoại bắt đầu quiz -->
+      <dialog id="startDialog" aria-modal="true" aria-label="Bắt đầu Quiz">
+        <form method="dialog">
+          <p>Chào mừng bạn đến với bài Quiz. Hãy sẵn sàng?</p>
+          <button id="btnStart">Bắt đầu</button>
+        </form>
+      </dialog>
+
+      <!-- Timer hiển thị ở đây -->
+      <div id="timer">
+        ⏱ Thời gian còn lại: <span id="timeLeft">05:00</span>
+      </div>
+
+      <!-- Nội dung quiz sẽ hiển thị tại đây -->
+      <div id="quizContent" aria-live="polite"></div>
+    </div>
+
+    <script>
+      // Dữ liệu câu hỏi (giữ nguyên của mày)
+      const questions = [
+        {
+          question: "Câu 1: Đây là Bundle nào trong Valorant?",
+          image:
+            "https://hoanghamobile.com/tin-tuc/wp-content/webp-express/webp-images/uploads/2025/02/bundle-valorant-thumb.jpg.webp",
+          options: [
+            "Bundle E.X.O",
+            "Bundle Prelude to Chaos 2.0",
+            "Bundle Neptune",
+            "Bundle Prime",
+          ],
+          correct: [0], // index 0 = "Bundle E.X.O"
+        },
+        {
+          question: "Câu 2: Chiêu tạo clone của Yoru tên là gì?",
+          image: null,
+          options: ["Fake clone", "Fakeout", "Fakeblind", "Clone"],
+          correct: [1], // Fakeout
+        },
+        {
+          question: "Câu 3: Đây là Bundle nào trong Valorant?",
+          image:
+            "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2025/02/bundle-valorant-5.jpg",
+          options: [
+            "Bundle Singularity",
+            "Bundle Singularity 2.0",
+            "Bundle Wasteland",
+            "Bundle Ion",
+          ],
+          correct: [0], // Bundle Singularity
+        },
+        {
+          question:
+            "Câu 4: Chiêu signature của Phoenix (Phượng hoàng daden) là gì?",
+          image: null,
+          options: ["Curveball", "Flashpoint", "FLASH/drive", "Blindside"],
+          correct: [0], // Curveball
+        },
+        {
+          question:
+            "Câu 5: Thằng bánh mì người Pháp (Chamber) có thể carry nhiều nhất bao nhiêu khẩu súng trong 1 round?",
+          image: "https://kitu.edu.vn/upload/2025/11/chamber-meme-7.webp",
+          options: ["1", "2", "3", "4"],
+          correct: [3], // 4
+        },
+        {
+          question: "Câu 6: Ultimate của KAY/O tên là gì?",
+          image:
+            "https://www.talkesport.com/wp-content/uploads/KAYO-Release-Date.jpg",
+          options: ["OVERDRIVE", "NULL/cmd", "LOCKDOWN", "EVOLUTION"],
+          correct: [1], // NULL/cmd
+        },
+        {
+          question:
+            "Câu 7: Câu nói: 'If I'm powered down, restart me. You leave me for scrap, I'll kill you.' là của nhân vật nào?",
+          image: null,
+          options: ["Chamber", "Gekko", "Omen ", "KAY/O"],
+          correct: [3], // KAY/O
+        },
+        {
+          question:
+            "Câu 8: Ngày ra mắt chính thức của Valorant Việt Nam là ngày nào?",
+          image:
+            "https://anphat.com.vn/media/news/5994_huong_dan_tai_valorant_closed_beta.jpg",
+          options: [
+            "6 tháng 4 năm 2020",
+            "6 tháng 4 năm 2021",
+            "6 tháng 6 năm 2021",
+            "4 tháng 6 năm 2021",
+          ],
+          correct: [1], // 6 tháng 4 năm 2021
+        },
+        {
+          question: "Câu 9: Ultimate của Viper có bao nhiêu điểm orb?",
+          image:
+            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSlGNxv_Ka-6mScjOYJeOFGMYvUiHKUA2VFmR2VqJfXrg&s=10",
+          options: ["8", "9", "7", "6"],
+          correct: [1], // 9
+        },
+        {
+          question:
+            "Câu 10: 1 viên headshot của Phantom ở tầm xa gây bao nhiêu damage?",
+          image:
+            "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2025/02/phantom-skin-valorant-thumb.jpg",
+          options: ["149", "150", "146", "140"],
+          correct: [3], // 140
+        },
+        {
+          question:
+            "Câu 11: 1 viên headshot Headhunter của Chamber gây bao nhiêu damage?",
+          image:
+            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlf0G5tVq65l-qvbxdAgU8wzx8BZ3HFfOniSb-l_54Kw&s=10",
+          options: ["160", "154", "159", "155"],
+          correct: [2], // 159
+        },
+        {
+          question:
+            "Câu 12: 1 viên headshot của Operator gây bao nhiêu damage?",
+          image:
+            "https://cdn.turbosmurfs.gg/2cdf5_17032467975025_1920_978e2fc391.webp",
+          options: ["200", "250", "225", "220"],
+          correct: [2], // 225
+        },
+        {
+          question:
+            "Câu 13: 1 dao dính người của Jett (Ultimate) gây bao nhiêu damage?",
+          image:
+            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTG8V-VAAom3C9zNe8650zdPgT8VCsk-sL34c0OF2xhAQ&s=10",
+          options: ["50", "55", "45", "60"],
+          correct: [0], // 50
+        },
+      ];
+
+      let current = 0;
+      let score = 0;
+      let timeLeft = 300; // ⏰ (300 giây)
+      let timerInterval = null;
+
+      const quizContent = document.getElementById("quizContent");
+      const startDialog = document.getElementById("startDialog");
+      const btnStart = document.getElementById("btnStart");
+      const timerEl = document.getElementById("timer");
+      const timeLeftEl = document.getElementById("timeLeft");
+
+      // Hàm cập nhật hiển thị timer
+      function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        const display = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+        timeLeftEl.textContent = display;
+
+        // Đổi màu cảnh báo khi dưới 1 phút
+        if (timeLeft <= 60) {
+          timerEl.classList.add("warning");
+        } else {
+          timerEl.classList.remove("warning");
+        }
+      }
+
+      // Hàm bắt đầu đếm ngược
+      function startTimer() {
+        timerEl.style.display = "block";
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+
+          if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            endQuiz(true); // Hết giờ
+          }
+        }, 1000);
+      }
+
+      // Hàm kết thúc quiz (có thể do hoàn thành hoặc hết giờ)
+      function endQuiz(isTimeOut = false) {
+        clearInterval(timerInterval);
+        timerEl.style.display = "none";
+
+        let html = `<div style="text-align:center; padding: 20px 10px;">`;
+
+        if (isTimeOut) {
+          html += `<h2 style="color:#d32f2f; margin-bottom:10px;">⏰ HẾT GIỜ!</h2>`;
+          html += `<p style="font-size:1.1em;">Bạn đã hết thời gian làm bài.</p>`;
+        } else {
+          html += `<h2 style="color:#2e7d32; margin-bottom:10px;">🎉 HOÀN THÀNH!</h2>`;
+        }
+
+        html += `<p style="font-size:1.5em; margin: 25px 0; font-weight:bold;">
+          Điểm của bạn: <span style="color:#1565c0;">${score} / ${questions.length}</span>
+        </p>`;
+
+        html += `<p style="color:#555;">Cảm ơn bạn đã tham gia bài Quiz!</p>`;
+        html += `</div>`;
+
+        quizContent.innerHTML = html;
+      }
+
+      // Hàm render câu hỏi
+      function renderQuestion() {
+        if (current >= questions.length) {
+          endQuiz(false);
+          return;
+        }
+
+        const q = questions[current];
+        let html = `<div style="text-align:right; font-size:0.9em; color:#666; margin-bottom:5px;">
+          Câu ${current + 1} / ${questions.length}
+        </div>`;
+        html += `<div class="question">${q.question}</div>`;
+
+        if (q.image) {
+          html += `<img src="${q.image}" alt="Hình minh họa" style="max-width:100%; height:auto; margin:10px 0;">`;
+        }
+
+        const multi = q.correct.length > 1;
+        html += `<form id="form${current}">`;
+
+        q.options.forEach((opt, i) => {
+          if (multi) {
+            html += `<label><input type="checkbox" name="ans" value="${i}"> ${opt}</label><br>`;
+          } else {
+            html += `<label><input type="radio" name="ans" value="${i}"> ${opt}</label><br>`;
+          }
+        });
+
+        html += `<button type="submit" style="margin-top:15px;">Nộp đáp án</button>`;
+        html += `</form>`;
+        html += `<div id="feedback${current}" class="feedback"></div>`;
+
+        if (current < questions.length - 1) {
+          html += `<button id="next${current}" disabled style="margin-top:10px;">Tiếp tục</button>`;
+        } else {
+          html += `<button id="next${current}" disabled style="margin-top:10px;">Hoàn thành</button>`;
+        }
+
+        quizContent.innerHTML = html;
+
+        // Xử lý submit
+        document.getElementById(`form${current}`).onsubmit = function (e) {
+          e.preventDefault();
+          const feedbackEl = document.getElementById(`feedback${current}`);
+          const checked = Array.from(
+            this.querySelectorAll("input:checked"),
+          ).map((input) => parseInt(input.value));
+
+          if (checked.length === 0) {
+            alert("Vui lòng chọn ít nhất một đáp án!");
+            return;
+          }
+
+          const correctSet = new Set(q.correct);
+          const isCorrect =
+            q.correct.length === checked.length &&
+            checked.every((i) => correctSet.has(i));
+
+          if (isCorrect) {
+            score++; // Cộng điểm
+          }
+
+          feedbackEl.style.display = "block";
+          if (isCorrect) {
+            feedbackEl.className = "feedback correct";
+            feedbackEl.textContent = "✔ ĐÚNG!";
+          } else {
+            feedbackEl.className = "feedback wrong";
+            feedbackEl.textContent = "✖ SAI!";
+          }
+
+          // Disable inputs
+          this.querySelectorAll("input").forEach(
+            (inp) => (inp.disabled = true),
+          );
+          document.getElementById(`next${current}`).disabled = false;
+        };
+
+        // Xử lý nút Next
+        document.getElementById(`next${current}`).onclick = function () {
+          current++;
+          renderQuestion();
+        };
+      }
+
+      // Xử lý bấm Bắt đầu
+      btnStart.onclick = function () {
+        startDialog.close();
+        startTimer(); // Bắt đầu đếm ngược
+        renderQuestion();
+      };
+
+      // Mở dialog khi load trang
+      window.onload = function () {
+        if (startDialog.showModal) {
+          startDialog.showModal();
+        } else {
+          // Fallback cho browser cũ
+          startDialog.style.display = "block";
+        }
+      };
+    </script>
+  </body>
+</html>
